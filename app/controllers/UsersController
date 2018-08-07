@@ -1,0 +1,85 @@
+var color = require('colors');
+var User = require('../models/User');
+var config = require('../helpers/config');
+var jwt = require('jsonwebtoken');
+var bcrypt = require('bcrypt');
+
+// module.exports = exports = () => {
+//   let index = function(req, res) {
+//       res.json({name: 'Jane Doe', age: 20});
+//   };
+//
+//   let user = function (req, res) {
+//       let user = {
+//           name: 'Jane Doe',
+//           age: 20,
+//           id: req.params.id
+//       };
+//
+//       res.json(user);
+//   };
+//
+//   return {index, user}
+// };
+
+
+// register
+exports.register = function(req, res) {
+    // get user
+    console.log('body: ', req.body);
+    var user = new User(req.body);
+    user.age = parseInt(user.age, 10);
+    user.age2 = parseInt(user.age2, 10);
+    user.password = bcrypt.hashSync(req.body.password, 10);
+
+    //save
+    user.save(function (err, newUser) {
+        if (err) {
+            res.json({"code": false, "message": "Error to save"});
+            return
+        }
+        newUser.password = undefined;
+        res.json({ message: 'Save ok', data: newUser });
+    });
+};
+
+// login
+exports.login = function(req, res) {
+
+    var username = req.body.username;
+    var password = req.body.password;
+
+    // find
+    User.findOne({
+        'username': username
+    }, function(err, user) {
+        if (!user) {
+            res.json({ error : 'User is not exist'})
+        } else if (user &&
+            user.comparePassword(password)) {
+            var payload = { username: user.username };
+            var jwtToken = jwt.sign(payload, config.jwtSecret, { expiresIn: 3600 });
+            var jsonResponse = {'access_token': 'JWT ' + jwtToken, 'refresh_token': "xxxxx-xxx-xx-x"};
+            res.json(jsonResponse)
+        } else {
+            res.json({ error : 'Login Error'})
+        }
+    })
+};
+
+// get current user
+exports.users = function(req, res) {
+    // find
+    User.find({}, function(err, users) {
+        if (err)
+            throw err;
+        if (users) {
+            var jsonResponse = {'users': users}
+            res.json(jsonResponse)
+        } else {
+            res.send(JSON.stringify({
+                error : 'Login Error'
+            }))
+        }
+    })
+}
